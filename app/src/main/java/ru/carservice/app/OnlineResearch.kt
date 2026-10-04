@@ -23,6 +23,7 @@ import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Surface
@@ -44,6 +45,7 @@ import androidx.compose.ui.viewinterop.AndroidView
 
 private data class ResearchSource(val title: String, val url: (String) -> String)
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun OnlineResearchScreen(vehicle: Vehicle?, subject: String, onBack: () -> Unit) {
     val query = remember(vehicle?.id, subject) {
