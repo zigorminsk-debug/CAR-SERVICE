@@ -895,7 +895,7 @@ private fun WorkCard(work: ServiceWork, onResearch: (String) -> Unit) {
 }
 
 @Composable
-private fun BackHeader(title: String, subtitle: String, onBack: () -> Unit) {
+internal fun BackHeader(title: String, subtitle: String, onBack: () -> Unit) {
     Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
         IconButton(onClick = onBack, modifier = Modifier.size(40.dp)) { Icon(Icons.Outlined.ArrowBack, contentDescription = "Назад", tint = CarNavy) }
         Spacer(Modifier.width(8.dp))
