@@ -1,6 +1,5 @@
 package ru.carservice.app
 
-import android.annotation.SuppressLint
 import android.net.Uri
 import android.webkit.WebView
 import android.webkit.WebViewClient
@@ -45,7 +44,6 @@ import androidx.compose.ui.viewinterop.AndroidView
 
 private data class ResearchSource(val title: String, val url: (String) -> String)
 
-@SuppressLint("SetJavaScriptEnabled")
 @Composable
 fun OnlineResearchScreen(vehicle: Vehicle?, subject: String, onBack: () -> Unit) {
     val query = remember(vehicle?.id, subject) {
@@ -107,7 +105,8 @@ fun OnlineResearchScreen(vehicle: Vehicle?, subject: String, onBack: () -> Unit)
                 factory = { context ->
                     WebView(context).apply {
                         webViewClient = WebViewClient()
-                        settings.javaScriptEnabled = true
+                        // Static search pages work without JavaScript; keeping it off reduces attack surface.
+                        settings.javaScriptEnabled = false
                         settings.domStorageEnabled = true
                         settings.builtInZoomControls = false
                         loadUrl(currentUrl)
