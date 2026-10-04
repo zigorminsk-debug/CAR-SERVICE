@@ -18,7 +18,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -43,14 +42,12 @@ import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.outlined.Language
 import androidx.compose.material.icons.outlined.LocalGasStation
 import androidx.compose.material.icons.outlined.MenuBook
-import androidx.compose.material.icons.outlined.OpenInNew
 import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material.icons.outlined.Shield
 import androidx.compose.material.icons.outlined.Tune
 import androidx.compose.material.icons.outlined.WorkOutline
 import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Divider
@@ -60,7 +57,6 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.OutlinedButton
@@ -69,7 +65,6 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -88,13 +83,13 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.view.WindowCompat
-import kotlinx.coroutines.delay
 
 private const val HOME = "home"
 private const val CATALOG = "catalog"
 private const val WORKS = "works"
 private const val VEHICLE = "vehicle"
 private const val ARTICLE = "article"
+private const val SEARCH = "search"
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -110,9 +105,14 @@ private fun CarServiceApp() {
     var screen by rememberSaveable { mutableStateOf(HOME) }
     var selectedVehicleId by rememberSaveable { mutableStateOf<String?>(null) }
     var selectedSectionId by rememberSaveable { mutableStateOf<String?>(null) }
+    var researchSubject by rememberSaveable { mutableStateOf("") }
     var latestRelease by remember { mutableStateOf<ReleaseInfo?>(null) }
     val context = LocalContext.current
     val selectedVehicle = CatalogData.vehicles.firstOrNull { it.id == selectedVehicleId }
+    val openResearch: (String) -> Unit = { subject ->
+        researchSubject = subject
+        screen = SEARCH
+    }
 
     LaunchedEffect(Unit) {
         latestRelease = UpdateChecker.latestRelease()
@@ -163,7 +163,11 @@ private fun CarServiceApp() {
                     },
                     onBack = { screen = HOME }
                 )
-                WORKS -> WorksScreen(onBack = { screen = HOME })
+                WORKS -> WorksScreen(
+                    vehicle = selectedVehicle,
+                    onBack = { screen = HOME },
+                    onResearch = openResearch
+                )
                 VEHICLE -> if (selectedVehicle != null) {
                     VehicleManualScreen(
                         vehicle = selectedVehicle,
@@ -184,12 +188,18 @@ private fun CarServiceApp() {
                         ManualArticleScreen(
                             vehicle = selectedVehicle,
                             section = section,
-                            onBack = { screen = VEHICLE }
+                            onBack = { screen = VEHICLE },
+                            onResearch = openResearch
                         )
                     } else {
                         EmptyState(onBack = { screen = HOME })
                     }
                 }
+                SEARCH -> OnlineResearchScreen(
+                    vehicle = selectedVehicle,
+                    subject = researchSubject,
+                    onBack = { screen = if (selectedVehicle != null) VEHICLE else WORKS }
+                )
             }
         }
     }
@@ -698,7 +708,12 @@ private fun ManualSectionRow(number: Int, section: ManualSection, onClick: () ->
 }
 
 @Composable
-private fun ManualArticleScreen(vehicle: Vehicle, section: ManualSection, onBack: () -> Unit) {
+private fun ManualArticleScreen(
+    vehicle: Vehicle,
+    section: ManualSection,
+    onBack: () -> Unit,
+    onResearch: (String) -> Unit
+) {
     var showOriginal by rememberSaveable(section.id) { mutableStateOf(false) }
     var translatedText by remember(section.id) { mutableStateOf(section.russianText) }
     var isTranslating by remember(section.id) { mutableStateOf(section.sourceLanguage != "ru") }
@@ -760,6 +775,16 @@ private fun ManualArticleScreen(vehicle: Vehicle, section: ManualSection, onBack
         }
         Spacer(Modifier.height(18.dp))
         InfoNote("Источник: сервисная база CAR SERVICE. Для критичных узлов проверяйте VIN, код двигателя и официальные нормы производителя.")
+        Spacer(Modifier.height(12.dp))
+        OutlinedButton(
+            onClick = { onResearch(section.title) },
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(13.dp)
+        ) {
+            Icon(Icons.Outlined.Search, contentDescription = null, modifier = Modifier.size(18.dp))
+            Spacer(Modifier.width(8.dp))
+            Text("Найти уточнения в интернете")
+        }
     }
 }
 
@@ -787,7 +812,11 @@ private fun WarningCard(text: String) {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun WorksScreen(onBack: () -> Unit) {
+private fun WorksScreen(
+    vehicle: Vehicle?,
+    onBack: () -> Unit,
+    onResearch: (String) -> Unit
+) {
     var query by rememberSaveable { mutableStateOf("") }
     var category by rememberSaveable { mutableStateOf("Все") }
     val categories = listOf("Все") + CatalogData.works.map { it.category }.distinct()
@@ -796,7 +825,11 @@ private fun WorksScreen(onBack: () -> Unit) {
             (query.isBlank() || work.title.contains(query, true) || work.description.contains(query, true))
     }
     Column(modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 20.dp).padding(top = 17.dp, bottom = 25.dp)) {
-        BackHeader(title = "Работы сервиса", subtitle = "Прозрачные цены и понятные сроки", onBack = onBack)
+        BackHeader(
+            title = "Работы сервиса",
+            subtitle = vehicle?.let { "${it.title} · ${it.engineCode}" } ?: "Прозрачные цены и понятные сроки",
+            onBack = onBack
+        )
         Spacer(Modifier.height(18.dp))
         OutlinedTextField(
             value = query,
@@ -817,7 +850,7 @@ private fun WorksScreen(onBack: () -> Unit) {
         Text("${filtered.size} услуг", color = CarMuted, fontSize = 12.sp)
         Spacer(Modifier.height(10.dp))
         filtered.forEach { work ->
-            WorkCard(work)
+            WorkCard(work, onResearch)
             Spacer(Modifier.height(10.dp))
         }
         Spacer(Modifier.height(8.dp))
@@ -826,7 +859,7 @@ private fun WorksScreen(onBack: () -> Unit) {
 }
 
 @Composable
-private fun WorkCard(work: ServiceWork) {
+private fun WorkCard(work: ServiceWork, onResearch: (String) -> Unit) {
     Card(modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(18.dp), colors = CardDefaults.cardColors(containerColor = CardWhite)) {
         Column(modifier = Modifier.padding(16.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -848,8 +881,14 @@ private fun WorkCard(work: ServiceWork) {
                 Spacer(Modifier.width(5.dp))
                 Text(work.duration, color = CarMuted, fontSize = 11.sp)
                 Spacer(Modifier.weight(1f))
-                Text("Записаться", color = CarBlue, fontSize = 12.sp, fontWeight = FontWeight.Bold)
-                Icon(Icons.Outlined.ArrowForward, null, tint = CarBlue, modifier = Modifier.size(16.dp).padding(start = 3.dp))
+                TextButton(
+                    onClick = { onResearch(work.title) },
+                    contentPadding = androidx.compose.foundation.layout.PaddingValues(0.dp)
+                ) {
+                    Icon(Icons.Outlined.Search, contentDescription = null, tint = CarBlue, modifier = Modifier.size(15.dp))
+                    Spacer(Modifier.width(4.dp))
+                    Text("Искать онлайн", color = CarBlue, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                }
             }
         }
     }
