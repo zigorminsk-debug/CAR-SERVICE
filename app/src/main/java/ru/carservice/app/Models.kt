@@ -41,7 +41,12 @@ data class ServiceWork(
     val accent: Long
 )
 
-data class ReleaseInfo(val version: String, val url: String, val notes: String)
+data class ReleaseInfo(
+    val version: String,
+    val url: String,
+    val notes: String,
+    val apkUrl: String? = null
+)
 
 object CatalogData {
     val vehicles = listOf(

@@ -107,6 +107,7 @@ private fun CarServiceApp() {
     var selectedSectionId by rememberSaveable { mutableStateOf<String?>(null) }
     var researchSubject by rememberSaveable { mutableStateOf("") }
     var latestRelease by remember { mutableStateOf<ReleaseInfo?>(null) }
+    var updateState by remember { mutableStateOf<String?>(null) }
     val context = LocalContext.current
     val selectedVehicle = CatalogData.vehicles.firstOrNull { it.id == selectedVehicleId }
     val openResearch: (String) -> Unit = { subject ->
@@ -137,7 +138,12 @@ private fun CarServiceApp() {
             if (latestRelease != null && screen == HOME) {
                 UpdateBanner(
                     release = latestRelease!!,
-                    onOpen = { UpdateChecker.openRelease(context, latestRelease!!) },
+                    status = updateState,
+                    onUpdate = {
+                        UpdateChecker.downloadAndInstall(context, latestRelease!!) { state ->
+                            updateState = state
+                        }
+                    },
                     onDismiss = { latestRelease = null }
                 )
             }
@@ -935,14 +941,34 @@ private fun EmptyState(onBack: () -> Unit) {
 }
 
 @Composable
-private fun UpdateBanner(release: ReleaseInfo, onOpen: () -> Unit, onDismiss: () -> Unit) {
+private fun UpdateBanner(
+    release: ReleaseInfo,
+    status: String?,
+    onUpdate: () -> Unit,
+    onDismiss: () -> Unit
+) {
     Surface(color = SoftBlue) {
-        Row(modifier = Modifier.fillMaxWidth().padding(start = 16.dp, top = 9.dp, bottom = 9.dp, end = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(start = 16.dp, top = 9.dp, bottom = 9.dp, end = 8.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
             Icon(Icons.Outlined.Download, null, tint = CarBlue, modifier = Modifier.size(20.dp))
             Spacer(Modifier.width(9.dp))
-            Text("Доступна новая версия ${release.version}", color = CarNavy, fontSize = 12.sp, modifier = Modifier.weight(1f))
-            TextButton(onClick = onOpen) { Text("Обновить", color = CarBlue, fontSize = 12.sp, fontWeight = FontWeight.Bold) }
-            IconButton(onClick = onDismiss, modifier = Modifier.size(30.dp)) { Icon(Icons.Outlined.Close, "Скрыть", tint = CarMuted, modifier = Modifier.size(16.dp)) }
+            Column(modifier = Modifier.weight(1f)) {
+                Text("Доступна новая версия ${release.version}", color = CarNavy, fontSize = 12.sp)
+                status?.let { Text(it, color = CarBlue, fontSize = 10.sp, maxLines = 2) }
+            }
+            TextButton(onClick = onUpdate) {
+                Text(
+                    if (status?.startsWith("Скачивание") == true) "Скачивается…" else "Обновить",
+                    color = CarBlue,
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.Bold
+                )
+            }
+            IconButton(onClick = onDismiss, modifier = Modifier.size(30.dp)) {
+                Icon(Icons.Outlined.Close, "Скрыть", tint = CarMuted, modifier = Modifier.size(16.dp))
+            }
         }
     }
 }
