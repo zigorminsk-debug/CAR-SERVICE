@@ -562,7 +562,7 @@ private fun CatalogScreen(
     }
 
     Column(modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 20.dp).padding(top = 17.dp, bottom = 24.dp)) {
-        BackHeader(title = "Каталог автомобилей", subtitle = "18 конфигураций · данные с 2000 года", onBack = onBack)
+        BackHeader(title = "Каталог автомобилей", subtitle = "${CatalogData.vehicles.size} конфигураций · данные с 2000 года", onBack = onBack)
         Spacer(Modifier.height(19.dp))
         OutlinedTextField(
             value = query,
@@ -613,7 +613,7 @@ private fun CatalogScreen(
             }
         }
         Spacer(Modifier.height(8.dp))
-        Text("Каталог расширяется через синхронизацию новых версий приложения.", color = CarMuted, fontSize = 11.sp, lineHeight = 16.sp)
+        InfoNote("В каталоге есть базовые конфигурации популярных марок и расширенная линейка Opel. Названия поколений и диапазоны лет сверены с открытыми карточками AV.BY; это площадка объявлений, поэтому точный двигатель, кузов и VIN нужно подтвердить перед ремонтом.")
     }
 }
 
