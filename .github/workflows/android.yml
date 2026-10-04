@@ -8,7 +8,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
 
 env:
   JAVA_VERSION: '17'
@@ -28,7 +28,19 @@ jobs:
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v6
       - name: Assemble debug APK
-        run: ./gradlew --no-daemon assembleDebug
+        id: assemble
+        continue-on-error: true
+        run: |
+          set -o pipefail
+          ./gradlew --no-daemon assembleDebug 2>&1 | tee "$RUNNER_TEMP/assemble.log"
+      - name: Publish build diagnostics
+        if: steps.assemble.outcome == 'failure'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          body="### Android assemble failed\n\n\`\`\`text\n$(tail -c 60000 "$RUNNER_TEMP/assemble.log")\n\`\`\`"
+          gh api "repos/${GITHUB_REPOSITORY}/commits/${GITHUB_SHA}/comments" -f body="$body"
+          exit 1
       - name: Run lint and unit tests
         run: ./gradlew --no-daemon lintDebug testDebugUnitTest
       - name: Upload debug APK
